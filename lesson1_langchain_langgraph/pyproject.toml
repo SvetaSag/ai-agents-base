@@ -1,0 +1,20 @@
+[project]
+name = "lesson1-langchain-langgraph"
+version = "0.1.0"
+description = "Lesson 1: LangChain + LangGraph, step by step"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain>=1.0",
+    "langchain-openai>=0.3",
+    "langgraph>=0.4",
+    "langgraph-checkpoint-sqlite>=2.0",
+    "python-dotenv>=1.0",
+    "jupyterlab>=4",
+    "ipykernel>=6",
+    "grandalf>=0.8",   # lets LangGraph draw the graph as ASCII, offline
+    "transformers>=4.50",  # notebook 04 "under the hood": render a model's chat template
+]
+
+# Not a package: every step is a notebook, open with `uv run jupyter lab`.
+[tool.uv]
+package = false
