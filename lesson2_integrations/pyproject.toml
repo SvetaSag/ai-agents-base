@@ -1,0 +1,37 @@
+[project]
+name = "lesson2-integrations"
+version = "0.1.0"
+description = "Lesson 2: integrations — MCP server over Postgres, agent with MCP, web chat, Telegram bot"
+requires-python = ">=3.12"
+dependencies = [
+    # agent
+    "langchain>=1.0",
+    "langchain-openai>=0.3",
+    "langgraph>=0.4",
+    "langgraph-checkpoint-postgres>=2.0",
+    # MCP: server (FastMCP) + client, and the LangChain adapter
+    "mcp>=1.9",
+    "langchain-mcp-adapters>=0.1",
+    # database
+    "psycopg[binary,pool]>=3.2",
+    "pymysql>=1.1", # only for downloading the dataset from the public CTU server
+    # web chat + telegram
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+    "aiogram>=3.13",
+    "python-dotenv>=1.0",
+    "sqlglot>=30.21.0",
+    "grandalf>=0.8",
+]
+
+# local-only extras (the docker image skips them: uv sync --no-dev)
+[dependency-groups]
+dev = [
+    "jupyterlab>=4",
+    "ipykernel>=6",
+    "pytest>=8",
+]
+
+[tool.uv]
+package = false

@@ -1,0 +1,76 @@
+# Lesson 2 stack.
+#   parts 1–4:  docker compose up -d postgres            (+ uv run python scripts/load_berka.py)
+#   part 5:     docker compose up -d --build             → web chat on http://localhost:8080
+#   part 6:     docker compose --profile telegram up -d --build   (needs TELEGRAM_BOT_TOKEN in .env)
+name: lesson2
+
+x-app: &app
+  build: .
+  image: lesson2-app
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bank
+    ports:
+      - "5434:5432"                       # host port 5434 — avoids clashing with other Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bank"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  seed:                                   # loads the Berka dataset once, then exits (skips if loaded)
+    <<: *app
+    restart: "no"
+    command: python scripts/load_berka.py
+    environment:
+      ADMIN_DSN: postgresql://postgres:postgres@postgres:5432/bank
+    volumes:
+      - ./data:/app/data                  # download cache, shared with the host
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  mcp:                                    # our bank MCP server over streamable HTTP
+    <<: *app
+    command: python -m bank_mcp.server --http --port 8001
+    environment:
+      BANK_DSN: postgresql://mcp_reader:mcp_reader@postgres:5432/bank   # read-only role
+      MCP_LOG_LEVEL: INFO
+    ports:
+      - "8001:8001"                       # so notebooks / MCP Inspector on the host can use it too
+    depends_on:
+      seed: { condition: service_completed_successfully }
+
+  api:                                    # LangGraph agent + HTTP API + web chat
+    <<: *app
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8080
+    env_file: .env                        # OPENROUTER_API_KEY, MODEL
+    environment:
+      AGENT_DSN: postgresql://postgres:postgres@postgres:5432/agent
+      BANK_MCP_URL: http://mcp:8001/mcp
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      mcp: { condition: service_started }
+
+  bot:                                    # Telegram bot — a client of the api
+    <<: *app
+    profiles: [telegram]
+    command: python -m app.bot
+    env_file: .env                        # TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USERS
+    environment:
+      API_URL: http://api:8080
+    depends_on:
+      api: { condition: service_started }
+
+volumes:
+  pgdata:
