@@ -1,0 +1,56 @@
+# Риск-менеджер с ОБЩЕЙ памятью: разговоры хранятся в Postgres (база agent), а не в RAM пода.
+# Теперь реплик может быть сколько угодно: любая продолжит любой разговор.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risk-manager
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: risk-manager
+  template:
+    metadata:
+      labels:
+        app: risk-manager
+    spec:
+      # агент думает долго (несколько вызовов LLM): при остановке даём доделать начатые
+      # запросы — 30 с по умолчанию мало, решение риск-менеджера идёт и дольше
+      terminationGracePeriodSeconds: 120
+      containers:
+      - name: risk
+        image: bank-agents:1
+        command: [python, risk_agent.py]
+        lifecycle:                         # при остановке ещё 5 с отвечать, пока Service уберёт под
+          preStop:                         # из балансировки — иначе запросы в эти секунды падают
+            exec:
+              command: [sleep, "5"]
+        envFrom:
+        - configMapRef:
+            name: agents-config
+        env:
+        - name: OPENROUTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-secret
+              key: OPENROUTER_API_KEY
+        - name: PUBLIC_URL
+          value: http://risk.agents.test/
+        - name: POSTGRES_PASSWORD                  # пароль базы — из Secret части 5
+          valueFrom:
+            secretKeyRef:
+              name: bank-db-secret
+              key: POSTGRES_PASSWORD
+        - name: CHECKPOINT_DSN                     # ← НОВОЕ: память агента в Postgres
+          value: postgresql://postgres:$(POSTGRES_PASSWORD)@bank-db:5432/agent
+        ports:
+        - containerPort: 8103
+        readinessProbe:
+          httpGet: {path: /.well-known/agent-card.json, port: 8103}
+          periodSeconds: 5
+        livenessProbe:
+          httpGet: {path: /.well-known/agent-card.json, port: 8103}
+          periodSeconds: 10
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: "1", memory: 512Mi}

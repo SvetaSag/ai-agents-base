@@ -1,0 +1,11 @@
+# Общие настройки агентов: модель и адреса друг друга (имена Service — это DNS-имена в кластере)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agents-config
+data:
+  # модель, на которой проверено занятие; openai/gpt-4o-mini дешевле, но заметно чаще ошибается в SQL и арифметике
+  MODEL: openai/gpt-6-luna
+  MCP_URL: http://bank-mcp:8101/mcp    # где инструменты
+  ANALYST_URL: http://analyst:8102     # где аналитик
+# Ключ OpenRouter — НЕ здесь, а в Secret llm-secret:  make secret  (берёт его из .env)

@@ -1,0 +1,27 @@
+# Namespace + квоты: «песочница» для экспериментальных агентов, чтобы они не съели весь кластер
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandbox
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: sandbox-quota
+  namespace: sandbox
+spec:
+  hard:
+    pods: "3"                        # не больше 3 подов
+    requests.cpu: 500m               # и не больше 0,5 CPU на всех
+    requests.memory: 512Mi
+---
+apiVersion: v1
+kind: LimitRange                     # значения по умолчанию для контейнеров без resources —
+metadata:                            # иначе под без requests не пройдёт квоту
+  name: sandbox-limits
+  namespace: sandbox
+spec:
+  limits:
+  - type: Container
+    default: {cpu: 200m, memory: 128Mi}
+    defaultRequest: {cpu: 100m, memory: 64Mi}

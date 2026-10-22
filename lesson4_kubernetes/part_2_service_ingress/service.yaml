@@ -1,0 +1,12 @@
+# Service — постоянный адрес для набора подов с меткой app: hello-agent
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-agent
+spec:
+  type: ClusterIP          # адрес только внутри кластера (по умолчанию)
+  selector:
+    app: hello-agent       # все поды с этой меткой — за этим сервисом
+  ports:
+  - port: 80               # порт сервиса: curl http://hello-agent
+    targetPort: 8080       # порт контейнера в поде

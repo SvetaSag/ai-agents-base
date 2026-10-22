@@ -1,0 +1,18 @@
+# Liveness-проба на деле: агент «ломается» через 30 с (/healthz → 500) → kubelet его перезапускает
+apiVersion: v1
+kind: Pod
+metadata:
+  name: flaky-agent
+spec:
+  containers:
+  - name: agent
+    image: hello-agent:1
+    env:
+    - name: HEALTHY_SECONDS          # через 30 с после старта /healthz начнёт отвечать 500
+      value: "30"
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      periodSeconds: 5
+      failureThreshold: 2            # 2 провала подряд → перезапуск контейнера

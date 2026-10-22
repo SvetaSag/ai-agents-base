@@ -1,0 +1,12 @@
+# ConfigMap — несекретные настройки агента отдельно от образа
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-agent-config
+data:
+  AGENT_NAME: support-agent            # станет переменной окружения (envFrom)
+  GREETING: "Здравствуйте! Я агент поддержки, настроенный через ConfigMap."
+  config.yaml: |                       # станет файлом /etc/agent/config.yaml (volume)
+    model: openai/gpt-4o-mini
+    temperature: 0
+    tools: [search, calculator]

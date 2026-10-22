@@ -1,0 +1,15 @@
+# SQL, который Postgres выполнит ОДИН раз — при первом создании базы (как db/init.sql в занятиях 2–3)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-db-init
+data:
+  init.sql: |
+    -- роль для MCP-сервера: только чтение
+    CREATE ROLE mcp_reader LOGIN PASSWORD 'mcp_reader';
+    ALTER ROLE mcp_reader SET default_transaction_read_only = on;
+    GRANT CONNECT ON DATABASE bank TO mcp_reader;
+    GRANT USAGE ON SCHEMA public TO mcp_reader;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO mcp_reader;
+    -- отдельная база для памяти риск-менеджера (часть 7)
+    CREATE DATABASE agent;

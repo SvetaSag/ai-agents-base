@@ -1,0 +1,18 @@
+# kube-prometheus-stack: Prometheus (собирает метрики) + Grafana (рисует) + экспортёры нод и подов.
+# Вся настройка — в одном файле:  helm install ... -f values.yaml
+grafana:
+  adminPassword: admin               # вход: admin / admin
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts: [grafana.agents.test]
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false   # видеть и наши ServiceMonitor, а не только свои
+    retention: 1d                                    # учебный кластер: храним сутки
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts: [prometheus.agents.test]
+alertmanager:
+  enabled: false                     # алерты на занятии не разбираем — экономим память кластера

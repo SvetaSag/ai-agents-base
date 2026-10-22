@@ -1,0 +1,25 @@
+# Один под = один запущенный агент
+apiVersion: v1
+kind: Pod
+metadata:
+  name: agent-pod-2
+  labels:
+    app: hello-agent       # метка: по ней Service найдёт этот под (часть 2)
+spec:
+  containers:
+  - name: agent
+    image: hello-agent:1   # собран прямо в кластере: make images
+    ports:
+    - containerPort: 8080
+    env:
+    - name: NODE_NAME      # downward API: Kubernetes сам подставит, на какой ноде запущен под
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    resources:
+      requests:            # сколько ресурсов под просит — по этому scheduler выбирает ноду
+        cpu: 50m
+        memory: 32Mi
+      limits:              # больше этого контейнер не получит (по памяти — будет убит)
+        cpu: 200m
+        memory: 64Mi

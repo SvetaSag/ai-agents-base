@@ -1,0 +1,42 @@
+# Deployment — управляет ReplicaSet'ами: обновления без простоя, история, откат
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-agent
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0    # при обновлении не опускаться ниже 4 рабочих подов
+      maxSurge: 1          # поднимать по одному новому поду сверх 4
+  selector:
+    matchLabels:
+      app: hello-agent
+  template:
+    metadata:
+      labels:
+        app: hello-agent
+    spec:
+      # nodeSelector:      # раскомментировать: поды поедут только на ноды с меткой load=high
+      #   load: high
+      containers:
+      - name: agent
+        image: hello-agent:1         # → hello-agent:2 — и смотрим, как поды заменяются по одному
+        lifecycle:                         # при остановке ещё 5 с отвечать, пока Service уберёт под
+          preStop:                         # из балансировки — иначе запросы в эти секунды падают
+            exec:
+              command: [sleep, "5"]
+        ports:
+        - containerPort: 8080
+        readinessProbe:                    # трафик на новый под — только когда он уже слушает порт
+          httpGet: {path: /healthz, port: 8080}
+          periodSeconds: 2
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        resources:
+          requests: {cpu: 50m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 64Mi}

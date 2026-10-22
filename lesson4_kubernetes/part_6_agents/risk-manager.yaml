@@ -1,0 +1,58 @@
+# Риск-менеджер (A2A): вход для пользователей. Помнит разговор — пока в памяти пода (часть 7 это исправит).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risk-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: risk-manager
+  template:
+    metadata:
+      labels:
+        app: risk-manager
+    spec:
+      # агент думает долго (несколько вызовов LLM): при остановке даём доделать начатые
+      # запросы — 30 с по умолчанию мало, решение риск-менеджера идёт и дольше
+      terminationGracePeriodSeconds: 120
+      containers:
+      - name: risk
+        image: bank-agents:1
+        command: [python, risk_agent.py]
+        lifecycle:                         # при остановке ещё 5 с отвечать, пока Service уберёт под
+          preStop:                         # из балансировки — иначе запросы в эти секунды падают
+            exec:
+              command: [sleep, "5"]
+        envFrom:
+        - configMapRef:
+            name: agents-config                # MODEL, ANALYST_URL
+        env:
+        - name: OPENROUTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-secret
+              key: OPENROUTER_API_KEY
+        - name: PUBLIC_URL                     # снаружи к нему приходят через Ingress по этому адресу
+          value: http://risk.agents.test/
+        ports:
+        - containerPort: 8103
+        readinessProbe:
+          httpGet: {path: /.well-known/agent-card.json, port: 8103}
+          periodSeconds: 5
+        livenessProbe:
+          httpGet: {path: /.well-known/agent-card.json, port: 8103}
+          periodSeconds: 10
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: "1", memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: risk-manager
+spec:
+  selector:
+    app: risk-manager
+  ports:
+  - port: 8103

@@ -1,0 +1,54 @@
+# Тот же Deployment, но настройки — из ConfigMap, ключ — из Secret
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello-agent
+  template:
+    metadata:
+      labels:
+        app: hello-agent
+    spec:
+      containers:
+      - name: agent
+        image: hello-agent:1
+        lifecycle:                         # при остановке ещё 5 с отвечать, пока Service уберёт под
+          preStop:                         # из балансировки — иначе запросы в эти секунды падают
+            exec:
+              command: [sleep, "5"]
+        ports:
+        - containerPort: 8080
+        readinessProbe:                    # трафик на новый под — только когда он уже слушает порт
+          httpGet: {path: /healthz, port: 8080}
+          periodSeconds: 2
+        envFrom:
+        - configMapRef:
+            name: hello-agent-config     # все ключи ConfigMap → переменные окружения
+        env:
+        - name: API_KEY                  # один ключ из Secret → переменная окружения
+          valueFrom:
+            secretKeyRef:
+              name: hello-agent-secret
+              key: API_KEY
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config
+          mountPath: /etc/agent          # config.yaml из ConfigMap → файл /etc/agent/config.yaml
+          readOnly: true
+        resources:
+          requests: {cpu: 50m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 64Mi}
+      volumes:
+      - name: config
+        configMap:
+          name: hello-agent-config
+          items:
+          - key: config.yaml             # в файлы — только этот ключ
+            path: config.yaml

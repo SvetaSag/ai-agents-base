@@ -1,0 +1,12 @@
+# Под-«зонд»: из него будем ходить по сети кластера (curl к подам и сервисам)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu
+  labels:
+    app: ubuntu
+spec:
+  containers:
+  - name: ubuntu
+    image: curlimages/curl:8.11.1    # маленький образ, в котором уже есть curl
+    command: ["sleep", "infinity"]   # просто живёт — мы заходим внутрь через kubectl exec

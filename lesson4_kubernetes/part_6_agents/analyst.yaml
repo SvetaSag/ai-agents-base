@@ -1,0 +1,64 @@
+# Агент-аналитик (A2A): 2 реплики за адресом analyst:8102. Снаружи кластера НЕ виден — только другим агентам.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analyst
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analyst
+  template:
+    metadata:
+      labels:
+        app: analyst
+    spec:
+      # агент думает долго (несколько вызовов LLM): при остановке даём доделать начатые
+      # запросы — 30 с по умолчанию мало, решение риск-менеджера идёт и дольше
+      terminationGracePeriodSeconds: 120
+      containers:
+      - name: analyst
+        image: bank-agents:1
+        command: [python, analyst_agent.py]
+        lifecycle:                         # при остановке ещё 5 с отвечать, пока Service уберёт под
+          preStop:                         # из балансировки — иначе запросы в эти секунды падают
+            exec:
+              command: [sleep, "5"]
+        envFrom:
+        - configMapRef:
+            name: agents-config                # MODEL, MCP_URL
+        env:
+        - name: OPENROUTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-secret
+              key: OPENROUTER_API_KEY
+        - name: PUBLIC_URL                     # адрес в карточке агента: по нему к нему придут другие агенты
+          value: http://analyst:8102/
+        ports:
+        - containerPort: 8102
+        # Три проверки здоровья:
+        startupProbe:                          # 1) старт: даём до 2,5 мин (ждём MCP-сервер), пока идёт — две другие молчат
+          httpGet: {path: /.well-known/agent-card.json, port: 8102}
+          periodSeconds: 5
+          failureThreshold: 30
+        readinessProbe:                        # 2) готов ли принимать трафик (иначе Service его пропускает)
+          httpGet: {path: /.well-known/agent-card.json, port: 8102}
+          periodSeconds: 5
+        livenessProbe:                         # 3) жив ли (не отвечает 3 раза подряд → перезапуск)
+          httpGet: {path: /.well-known/agent-card.json, port: 8102}
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: "1", memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analyst
+spec:
+  selector:
+    app: analyst
+  ports:
+  - port: 8102

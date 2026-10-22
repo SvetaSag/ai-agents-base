@@ -1,0 +1,25 @@
+# CronJob — агент по расписанию: раз в 2 минуты спрашивает аналитика и печатает «отчёт»
+# (в жизни: ежедневная сводка, ночная проверка данных, рассылка)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: daily-report
+spec:
+  schedule: "*/2 * * * *"            # каждые 2 минуты (формат cron: мин час день месяц день_недели)
+  concurrencyPolicy: Forbid          # не запускать новый, пока не закончился предыдущий
+  successfulJobsHistoryLimit: 2      # сколько завершённых Job хранить
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: report
+            image: bank-agents:1
+            command:
+            - python
+            - ask.py
+            - http://analyst:8102
+            - "Сколько всего кредитов в банке и сколько из них в статусе running_in_debt? Ответь одной строкой."

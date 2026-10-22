@@ -1,0 +1,45 @@
+# MCP-сервер с инструментами банка: 2 реплики за одним адресом bank-mcp:8101
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-mcp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bank-mcp
+  template:
+    metadata:
+      labels:
+        app: bank-mcp
+    spec:
+      containers:
+      - name: mcp
+        image: bank-agents:1
+        command: [python, mcp_server.py]       # один образ — разные команды
+        lifecycle:                         # при остановке ещё 5 с отвечать, пока Service уберёт под
+          preStop:                         # из балансировки — иначе запросы в эти секунды падают
+            exec:
+              command: [sleep, "5"]
+        env:
+        - name: BANK_DSN                       # в базу — ролью только для чтения
+          value: postgresql://mcp_reader:mcp_reader@bank-db:5432/bank
+        ports:
+        - containerPort: 8101
+        readinessProbe:                        # трафик — только когда порт открыт
+          tcpSocket:
+            port: 8101
+          periodSeconds: 5
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {cpu: 500m, memory: 384Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-mcp
+spec:
+  selector:
+    app: bank-mcp
+  ports:
+  - port: 8101

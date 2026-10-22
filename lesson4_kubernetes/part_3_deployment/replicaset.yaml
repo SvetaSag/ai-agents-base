@@ -1,0 +1,28 @@
+# ReplicaSet — «пусть всегда будет 4 таких агента»
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: hello-agent-rs
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: hello-agent     # какими подами управляет: с этой меткой
+  template:                # шаблон, по которому создаются новые поды
+    metadata:
+      labels:
+        app: hello-agent
+    spec:
+      containers:
+      - name: agent
+        image: hello-agent:1
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        resources:
+          requests: {cpu: 50m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 64Mi}
