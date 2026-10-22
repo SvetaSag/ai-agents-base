@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: storage-demo
+spec:
+  containers:
+    - name: writer
+      image: registry.k8s.io/busybox
+      # дописываем строку в файл на томе и показываем его содержимое
+      command:
+        - sh
+        - -c
+        - 'echo "$(date): запуск пода" >> /data/log.txt; cat /data/log.txt; sleep 3600'
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: demo-pvc

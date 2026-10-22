@@ -1,0 +1,19 @@
+grafana:
+  adminPassword: admin
+  service:
+    type: LoadBalancer
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts: [grafana.hse-ai.ru]
+  sidecar:
+    dashboards:
+      enabled: true          # сам подхватит ConfigMap с label grafana_dashboard: "1"
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false   # видеть наши ServiceMonitor
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts: [prometheus.hse-ai.ru]

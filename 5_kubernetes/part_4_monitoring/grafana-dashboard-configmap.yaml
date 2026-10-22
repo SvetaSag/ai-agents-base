@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  fastapi-gateway.json: |
+    {
+      "dashboard": {
+        "title": "FastAPI Gateway Metrics",
+        "panels": [
+          {
+            "title": "HTTP Requests Total",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total[5m])) by (endpoint, status)",
+                "legendFormat": "{{endpoint}} - {{status}}"
+              }
+            ]
+          },
+          {
+            "title": "HTTP Request Duration",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+                "legendFormat": "{{endpoint}}"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  vllm-backend.json: |
+    {
+      "dashboard": {
+        "title": "vLLM Backend Metrics",
+        "panels": [
+          {
+            "title": "vLLM Request Rate",
+            "targets": [
+              {
+                "expr": "sum(rate(vllm_request_total[5m]))",
+                "legendFormat": "Requests/sec"
+              }
+            ]
+          },
+          {
+            "title": "vLLM Latency",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(vllm_request_duration_seconds_bucket[5m])) by (le))",
+                "legendFormat": "P95 Latency"
+              }
+            ]
+          }
+        ]
+      }
+    }

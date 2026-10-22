@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: sandbox-limits
+  namespace: sandbox
+spec:
+  # дефолтные requests/limits для контейнеров, если не заданы явно —
+  # без них под без requests не пройдёт ResourceQuota
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 128Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 64Mi
